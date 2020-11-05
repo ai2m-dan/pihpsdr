@@ -1121,8 +1121,12 @@ fprintf(stderr,"create_receiver: OpenChannel id=%d buffer_size=%d fft_size=%d sa
 // Since there is currently no GUI in piHPSDR to change these values, they are now hard-
 // coded here (0.01 msec ==> 0.00001 sec, 30 ==> 4.95).
 //
-  create_anbEXT(rx->id,1,  rx->buffer_size,rx->sample_rate,0.00001,0.00001,0.00001,0.05, 4.95);
-  create_nobEXT(rx->id,1,0,rx->buffer_size,rx->sample_rate,0.00001,0.00001,0.00001,0.05, 4.95);
+  // create_anbEXT(rx->id,1,  rx->buffer_size,rx->sample_rate,0.00001,0.00001,0.00001,0.05, 4.95);
+  // create_nobEXT(rx->id,1,0,rx->buffer_size,rx->sample_rate,0.00001,0.00001,0.00001,0.05, 4.95);
+
+// Changed Threshold settings to 20 (3.30) for better suppresion of local Plasma TV
+  create_anbEXT(rx->id,1,  rx->buffer_size,rx->sample_rate,0.00001,0.00001,0.00001,0.05, 3.30);
+  create_nobEXT(rx->id,1,0,rx->buffer_size,rx->sample_rate,0.00001,0.00001,0.00001,0.05, 3.30);
   
 fprintf(stderr,"RXASetNC %d\n",rx->fft_size);
   RXASetNC(rx->id, rx->fft_size);
