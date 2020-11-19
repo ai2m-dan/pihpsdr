@@ -1683,6 +1683,22 @@ static int last_power=0;
           } else {
             power=transmitter->drive_level;
           }
+          if (device == DEVICE_HERMES_LITE2) {
+            //
+            // from the "intended" drive level power, calculate the
+            // next lower TX attenuation which can be from 0.0 to -7.5 dB
+            // in 0.5 dB steps, encode the step in a four-bit word and shift
+            // it to the upper 4 bits.
+            // we always use the att level that produces a little bit *less* attenuation
+            // than required, and down-scale the IQ samples in transmitter.c
+            //
+            if (power > 0) {
+              int hl2power = 15+(int)lround(ceil(40.0 * log10((double) power / 255.0)));
+              if (hl2power < 0) hl2power=0;
+	      // hl2power=0: -7.5 dB, hl2power=1: -7.0 dB, ..., hl2power=15: 0dB
+              power=hl2power << 4;  // shift to upper bits
+            }
+          }
         }
 
 //if(last_power!=power) {
@@ -1710,9 +1726,11 @@ static int last_power=0;
           output_buffer[C2]|=0x10;
         }
         if (device==DEVICE_HERMES_LITE2) {
-          // do not set Apollo/Alex bits,
-          // but set ADDR=0x09 bits 18(always), 19(pa enable), 20(tune)
-          output_buffer[C2]= 0x04;
+          // do not set any Apollo/Alex bits,
+          // ADDR=0x09 bit 19 follows "PA enable" state
+          // ADDR=0x09 bit 20 follows "TUNE" state
+          // ADDR=0x09 bit 18 always cleared (external tuner enabled)
+          output_buffer[C2]= 0x00;
           if (pa_enabled) output_buffer[C2] |= 0x08;
           if (tune)       output_buffer[C2] |= 0x10;
         } 
@@ -1885,7 +1903,7 @@ static int last_power=0;
 	      output_buffer[C1]|=(receiver[1]->adc<<(2*rx2channel));
 	    }
 	}
-        if (have_rx_gain) {
+        if (device == DEVICE_HERMES_LITE2) {
           //
           // On the HermesLite2, we need bit7 set to make this feature active,
           // and need bit6 set to tell HL2 to directly use the lowest 6 bits

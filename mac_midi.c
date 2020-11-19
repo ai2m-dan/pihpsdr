@@ -164,11 +164,17 @@ void register_midi_device(char *myname) {
 	    MIDIObjectGetStringProperty(dev, kMIDIPropertyName, &pname);
 	    CFStringGetCString(pname, name, sizeof(name), 0);
 	    CFRelease(pname);
+            //
+            // Some users have reported that MacOS reports a string of length zero
+            // for some MIDI devices. In this case, we replace the name by
+            // "NoPort"
+            //
+            if (strlen(name) == 0) strcpy(name,"NoPort");
 	    if (!strncmp(name, myname, mylen)) {
 		FoundMIDIref=i;
 		fprintf(stderr,"MIDI: registering device >%s<\n", name);
 	    } else {
-		fprintf(stderr,"MIDI: looking for >%s< so %s does not match\n", myname,name);
+		fprintf(stderr,"MIDI: looking for >%s< so >%s< does not match\n", myname,name);
 	    }
 	}
     }

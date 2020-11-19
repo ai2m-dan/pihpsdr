@@ -931,8 +931,8 @@ void tx_set_mode(TRANSMITTER* tx,int mode) {
       int m=vfo[active_receiver->id].mode;
       if(m==modeFMN) {
         if(active_receiver->deviation==2500) {
-         filter_low=-4000;
-         filter_high=4000;
+         filter_low=-5500;
+         filter_high=5500;
         } else {
          filter_low=-8000;
          filter_high=8000;
@@ -975,8 +975,8 @@ void tx_set_filter(TRANSMITTER *tx,int low,int high) {
       break;
     case modeFMN:
       if(tx->deviation==2500) {
-        tx->filter_low=-4000;
-        tx->filter_high=4000;
+        tx->filter_low=-5500;
+        tx->filter_high=5500;
       } else {
         tx->filter_low=-8000;
         tx->filter_high=8000;
@@ -1060,6 +1060,33 @@ static void full_tx_buffer(TRANSMITTER *tx) {
   } else {
     update_vox(tx);
 
+    //
+    // DL1YCF:
+    // The FM pre-emphasis filter in WDSP has maximum unit
+    // gain at about 3000 Hz, so that it attenuates at 300 Hz
+    // by about 20 dB and at 1000 Hz by about 10 dB.
+    // Natural speech has much energy at frequencies below 1000 Hz
+    // which will therefore aquire only little energy, such that
+    // FM sounds rather silent.
+    //
+    // At the expense of having some distortion for the highest
+    // frequencies, we amplify the mic samples here by 15 dB
+    // when doing FM, such that enough "punch" remains after the
+    // FM pre-emphasis filter.
+    // 
+    // If ALC happens before FM pre-emphasis, this has little effect
+    // since the additional gain applied here will most likely be
+    // compensated by ALC, so it is important to have FM pre-emphasis
+    // before ALC (checkbox in tx_menu checked, that is, pre_emphasis==0).
+    //
+    // Note that mic sample amplification has to be done after update_vox()
+    //
+    if (tx->mode == modeFMN && !tune) {
+      for (int i=0; i<2*tx->samples; i+=2) {
+        tx->mic_input_buffer[i] *= 5.6234;  // 20*Log(5.6234) is 15
+      }
+    }
+
     fexchange0(tx->id, tx->mic_input_buffer, tx->iq_output_buffer, &error);
     if(error!=0) {
       fprintf(stderr,"full_tx_buffer: id=%d fexchange0: error=%d\n",tx->id,error);
@@ -1087,6 +1114,36 @@ static void full_tx_buffer(TRANSMITTER *tx) {
         gain=gain*(double)transmitter->drive_level*fac*0.00392;
       } else {
         gain=gain*(double)transmitter->drive_level*0.00392;
+      }
+    }
+    if (protocol == ORIGINAL_PROTOCOL && radio->device == DEVICE_HERMES_LITE2) {
+      //
+      // The HermesLite2 is built around the AD9866 modem chip. The TX level can
+      // be adjusted from 0.0 to -7.5 dB in 0.5 db steps, and these settings are
+      // encoded in the top 4 bits of the HPSDR "drive level".
+      //
+      // In old_protocol.c, the TX attenuator is set according to the drive level,
+      // here we only apply a (mostly small) additional damping of the IQ samples
+      // to achieve a smooth drive level adjustment.
+      // However, if the drive level requires an attenuation *much* larger than
+      // 7.5 dB we have to damp significantly at this place, which may affect IMD.
+      //
+      int power;
+      double f,g;
+      if(tune && !transmitter->tune_use_drive) {
+        f=sqrt((double)transmitter->tune_percent * 0.01);
+        power=(int)((double)transmitter->drive_level*f);
+      } else {
+        power=transmitter->drive_level;
+      }
+      g=-15.0;
+      if (power > 0) {
+        f = 40.0 * log10((double) power / 255.0);   // 2* attenuation in dB
+        g= ceil(f);                                 // 2* attenuation rounded to half-dB steps
+        if (g < -15.0) g=-15.0;                     // nominal TX attenuation
+        gain=gain*pow(10.0,0.05*(f-g));
+      } else {
+        gain=0.0;
       }
     }
 
