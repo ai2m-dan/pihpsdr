@@ -370,11 +370,10 @@ void vfo_band_changed(int id,int b) {
   vfo[id].band=b;
   vfo[id].frequency=entry->frequency;
   vfo[id].mode=entry->mode;
-  vfo[id].filter=entry->filter;
   vfo[id].lo=band->frequencyLO+band->errorLO;
 
 //
-// Change to the filter/NR combination stored for this mode
+// Apply the filter/NR combination stored for this mode
 //
   m=vfo[id].mode;
 
@@ -1034,14 +1033,17 @@ void vfo_update() {
         cairo_set_source_rgb (cr, 0.0, 0.0, 0.0);
         cairo_paint (cr);
 
-        cairo_select_font_face(cr, "FreeMono",
+        cairo_select_font_face(cr, DISPLAY_FONT,
             CAIRO_FONT_SLANT_NORMAL,
             CAIRO_FONT_WEIGHT_BOLD);
 
         switch(vfo[id].mode) {
           case modeFMN:
+            //
+            // filter edges are +/- 5500 if deviation==2500,
+            //              and +/- 8000 if deviation==5000
             if(active_receiver->deviation==2500) {
-              sprintf(temp_text,"%s 8k",mode_string[vfo[id].mode]);
+              sprintf(temp_text,"%s 11k",mode_string[vfo[id].mode]);
             } else {
               sprintf(temp_text,"%s 16k",mode_string[vfo[id].mode]);
             }
@@ -1060,7 +1062,7 @@ void vfo_update() {
             sprintf(temp_text,"%s %s",mode_string[vfo[id].mode],band_filter->title);
             break;
         }
-        cairo_set_font_size(cr, 12);
+        cairo_set_font_size(cr, DISPLAY_FONT_SIZE2);
         cairo_set_source_rgb(cr, 1.0, 1.0, 0.0);
         cairo_move_to(cr, 5, 15);
         cairo_show_text(cr, temp_text);
@@ -1076,6 +1078,36 @@ void vfo_update() {
         long long af = vfo[0].ctun ? vfo[0].ctun_frequency : vfo[0].frequency;
         long long bf = vfo[1].ctun ? vfo[1].ctun_frequency : vfo[1].frequency;
 
+#if 0
+//
+// DL1YCF: code still here but deactivated:
+// there is no consensus whether the "VFO display frequency" should move if
+// RIT/XIT values are changed. My Kenwood TS590 does, but some popular
+// other SDR software does not.
+// So although I do not feel too well if the actual TX frequency is not
+// that on the display, I deactivate the code but leave it here so it
+// can quickly be re-activated if one wants.
+// 
+        //
+        // If RIT or XIT is active, add this to displayed VFO frequency
+        //
+        // Adjust VFO_A frequency
+        //
+        if (isTransmitting() && txvfo == 0) {
+          if (transmitter->xit_enabled) af += transmitter->xit;
+        } else {
+          if (vfo[0].rit_enabled) af += vfo[0].rit;
+        }
+        //
+        // Adjust VFO_B frequency
+        //
+        if (isTransmitting() && txvfo == 1) {
+          if (transmitter->xit_enabled) bf += transmitter->xit;
+        } else {
+          if (vfo[1].rit_enabled) bf += vfo[0].rit;
+        }
+#endif
+
         int oob=0;
         if (can_transmit) oob=transmitter->out_of_band;
         sprintf(temp_text,"VFO A: %0lld.%06lld",af/(long long)1000000,af%(long long)1000000);
@@ -1090,7 +1122,7 @@ void vfo_update() {
             }
         }
         cairo_move_to(cr, 5, 38);  
-        cairo_set_font_size(cr, 22); 
+        cairo_set_font_size(cr, DISPLAY_FONT_SIZE4); 
         cairo_show_text(cr, temp_text);
 
         sprintf(temp_text,"VFO B: %0lld.%06lld",bf/(long long)1000000,bf%(long long)1000000);
@@ -1115,7 +1147,7 @@ void vfo_update() {
           } else {
             cairo_set_source_rgb(cr, 0.7, 0.7, 0.7);
           }
-          cairo_set_font_size(cr, 12);
+          cairo_set_font_size(cr, DISPLAY_FONT_SIZE2);
           cairo_show_text(cr, "PS");
         }
 #endif
@@ -1126,7 +1158,7 @@ void vfo_update() {
         } else {
           cairo_set_source_rgb(cr, 0.7, 0.7, 0.7);
         }
-        cairo_set_font_size(cr, 12);
+        cairo_set_font_size(cr, DISPLAY_FONT_SIZE2);
         sprintf(temp_text,"Zoom x%d",active_receiver->zoom);
         cairo_show_text(cr, temp_text);
 
@@ -1137,7 +1169,7 @@ void vfo_update() {
         }
         sprintf(temp_text,"RIT: %lldHz",vfo[id].rit);
         cairo_move_to(cr, 170, 15);
-        cairo_set_font_size(cr, 12);
+        cairo_set_font_size(cr, DISPLAY_FONT_SIZE2);
         cairo_show_text(cr, temp_text);
 
 
@@ -1149,7 +1181,7 @@ void vfo_update() {
           }
           sprintf(temp_text,"XIT: %lldHz",transmitter->xit);
           cairo_move_to(cr, 310, 15);
-          cairo_set_font_size(cr, 12);
+          cairo_set_font_size(cr, DISPLAY_FONT_SIZE2);
           cairo_show_text(cr, temp_text);
         }
 
@@ -1326,7 +1358,7 @@ void vfo_update() {
         }
         sprintf(temp_text,"DUP");
         cairo_move_to(cr, 260, 38);
-        cairo_set_font_size(cr, 12);
+        cairo_set_font_size(cr, DISPLAY_FONT_SIZE2);
         cairo_show_text(cr, temp_text);
 
         cairo_destroy (cr);

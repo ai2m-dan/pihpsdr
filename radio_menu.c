@@ -259,55 +259,54 @@ static void sat_cb(GtkWidget *widget, gpointer data) {
 }
 
 void load_filters(void) {
-  if(filter_board==N2ADR) {
-    // set OC filters
-    BAND *band;
-    band=band_get_band(band160);
-    band->OCrx=band->OCtx=1;
-    band=band_get_band(band80);
-    band->OCrx=band->OCtx=66;
-    band=band_get_band(band60);
-    band->OCrx=band->OCtx=68;
-    band=band_get_band(band40);
-    band->OCrx=band->OCtx=68;
-    band=band_get_band(band30);
-    band->OCrx=band->OCtx=72;
-    band=band_get_band(band20);
-    band->OCrx=band->OCtx=72;
-    band=band_get_band(band17);
-    band->OCrx=band->OCtx=80;
-    band=band_get_band(band15);
-    band->OCrx=band->OCtx=80;
-    band=band_get_band(band12);
-    band->OCrx=band->OCtx=96;
-    band=band_get_band(band10);
-    band->OCrx=band->OCtx=96;
-    if(protocol==NEW_PROTOCOL) {
-      schedule_high_priority();
-    }
-    return;
+  BAND *band;
+  switch (filter_board) {
+      case N2ADR:
+        // set OC outputs for each band according to the N2ADR board requirements
+        band=band_get_band(band160);
+        band->OCrx=band->OCtx=1;
+        band=band_get_band(band80);
+        band->OCrx=band->OCtx=66;
+        band=band_get_band(band60);
+        band->OCrx=band->OCtx=68;
+        band=band_get_band(band40);
+        band->OCrx=band->OCtx=68;
+        band=band_get_band(band30);
+        band->OCrx=band->OCtx=72;
+        band=band_get_band(band20);
+        band->OCrx=band->OCtx=72;
+        band=band_get_band(band17);
+        band->OCrx=band->OCtx=80;
+        band=band_get_band(band15);
+        band->OCrx=band->OCtx=80;
+        band=band_get_band(band12);
+        band->OCrx=band->OCtx=96;
+        band=band_get_band(band10);
+        band->OCrx=band->OCtx=96;
+        break;
+    case ALEX:
+    case APOLLO:
+    case CHARLY25:
+        // This is most likely not necessary here, but can do no harm
+        set_alex_rx_antenna();
+        set_alex_tx_antenna();
+        break;
+    case NONE:
+        break;
+    default:
+        break;
   }
-
+  //
+  // After doing filter-board-specific actions,
+  // schedule "General" and "HighPrio" packets for P2
+  //
   if(protocol==NEW_PROTOCOL) {
     filter_board_changed();
+    schedule_high_priority();
   }
-
-  if(filter_board==ALEX || filter_board==APOLLO) {
-    BAND *band=band_get_current_band();
-    // mode and filters have nothing to do with the filter board
-    //BANDSTACK_ENTRY* entry=bandstack_entry_get_current();
-    //setFrequency(entry->frequency);
-    //setMode(entry->mode);
-    //set_mode(active_receiver,entry->mode);
-    //FILTER* band_filters=filters[entry->mode];
-    //FILTER* band_filter=&band_filters[entry->filter];
-    //set_filter(active_receiver,band_filter->low,band_filter->high);
-    if(active_receiver->id==0) {
-      set_alex_rx_antenna();
-      set_alex_tx_antenna();
-      //set_alex_attenuation(band->alexAttenuation); // nowhere maintained
-    }
-  }
+  //
+  // This switches between StepAttenuator slider and CHARLY25 ATT/Preamp checkboxes
+  //
   att_type_changed();
 }
 
@@ -653,23 +652,23 @@ void radio_menu(GtkWidget *parent) {
   row=1;
 
   GtkWidget *rit_label=gtk_label_new(NULL);
-  gtk_label_set_markup(GTK_LABEL(rit_label), "<b>RIT/XIT step (Hz):</b>");
+  gtk_label_set_markup(GTK_LABEL(rit_label), "<b>RIT(XIT) step (Hz):</b>");
   gtk_grid_attach(GTK_GRID(grid),rit_label,col,row,1,1);
   row++;
 
-  GtkWidget *rit_1=gtk_radio_button_new_with_label(NULL,"1");
+  GtkWidget *rit_1=gtk_radio_button_new_with_label(NULL,"1(10)");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (rit_1), rit_increment==1);
   gtk_grid_attach(GTK_GRID(grid),rit_1,col,row,1,1);
   g_signal_connect(rit_1,"pressed",G_CALLBACK(rit_cb),(gpointer *)1);
   row++;
 
-  GtkWidget *rit_10=gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(rit_1),"10");
+  GtkWidget *rit_10=gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(rit_1),"10(100)");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (rit_10), rit_increment==10);
   gtk_grid_attach(GTK_GRID(grid),rit_10,col,row,1,1);
   g_signal_connect(rit_10,"pressed",G_CALLBACK(rit_cb),(gpointer *)10);
   row++;
 
-  GtkWidget *rit_100=gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(rit_10),"100");
+  GtkWidget *rit_100=gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(rit_10),"100(1000)");
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (rit_100), rit_increment==100);
   gtk_grid_attach(GTK_GRID(grid),rit_100,col,row,1,1);
   g_signal_connect(rit_100,"pressed",G_CALLBACK(rit_cb),(gpointer *)100);

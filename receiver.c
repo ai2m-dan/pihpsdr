@@ -1251,6 +1251,12 @@ g_print("receiver_change_sample_rate: id=%d rate=%d scale=%d buffer_size=%d outp
 
   SetChannelState(rx->id,1,0);
 
+  //
+  // for a non-PS receiver, adjust pixels and hz_per_pixel depending on the zoom value
+  //
+  rx->pixels=rx->width*rx->zoom;
+  rx->hz_per_pixel=(double)rx->sample_rate/(double)rx->pixels;
+
   g_mutex_unlock(&rx->mutex);
 
 fprintf(stderr,"receiver_change_sample_rate: id=%d rate=%d buffer_size=%d output_samples=%d\n",rx->id, rx->sample_rate, rx->buffer_size, rx->output_samples);
@@ -1304,8 +1310,8 @@ void receiver_filter_changed(RECEIVER *rx) {
   int m=vfo[rx->id].mode;
   if(m==modeFMN) {
     if(rx->deviation==2500) {
-      filter_low=-4000;
-      filter_high=4000;
+      filter_low=-5500;
+      filter_high=5500;
     } else {
       filter_low=-8000;
       filter_high=8000;
@@ -1322,10 +1328,8 @@ void receiver_filter_changed(RECEIVER *rx) {
 
   if(can_transmit && transmitter!=NULL) {
     if(transmitter->use_rx_filter) {
-      if(rx==active_receiver) {
-        tx_set_filter(transmitter,filter_low,filter_high);
-      }
-    }
+      tx_set_filter(transmitter);
+    } 
   }
 }
 
